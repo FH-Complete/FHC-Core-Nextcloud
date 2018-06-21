@@ -40,10 +40,18 @@ class Nextcloud extends Auth_Controller
 	public function index()
 	{
 		$this->load->library('WidgetLib');
-		$this->load->library('extensions/FHC-Core-Nextcloud/OcsLib', 'ocslib');
+		$this->load->model('extensions/FHC-Core-Nextcloud/Ocs_Model', 'OcsModel');
 
 		/*
-		if($users = $this->ocslib->getGroupMember($groupname))
+		if($apps = $this->OcsModel->getApps())
+		{
+			echo "Apps:";
+			var_dump($apps);
+		}
+		*/
+
+		/*
+		if($users = $this->OcsModel->getGroupMember($groupname))
 		{
 			echo "Group Members:";
 			var_dump($users);
@@ -51,14 +59,14 @@ class Nextcloud extends Auth_Controller
 		*/
 
 		/*
-		if($this->ocslib->addGroup($groupname))
+		if($this->OcsModel->addGroup($groupname))
 			echo "ok";
 		else
 			echo "failed";
 		*/
 
 		/*
-		if($this->ocslib->addUserToGroup($groupname, $username))
+		if($this->OcsModel->addUserToGroup($groupname, $username))
 			echo "ok";
 		else
 			echo "failed";

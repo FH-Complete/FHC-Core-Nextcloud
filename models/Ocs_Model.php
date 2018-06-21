@@ -19,16 +19,14 @@
  */
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
-class OcsLib
+class Ocs_Model extends FHC_Model
 {
 	/**
 	 * Constructor
 	 */
 	public function __construct()
 	{
-		// Gets CI instance
-		$this->ci =& get_instance();
-		$this->config = $this->ci->config->item('FHC-Core-Nextcloud');
+		$this->NextcloudConfig = $this->config->item('FHC-Core-Nextcloud');
 	}
 
 	/**
@@ -40,7 +38,7 @@ class OcsLib
 	{
 		$ch = curl_init();
 
-		$url = $this->config['url'].'ocs/v1.php/cloud/groups';
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups';
 		$data = 'groupid='.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -50,7 +48,7 @@ class OcsLib
 		curl_setopt($ch, CURLOPT_POST, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
-		if (!$this->config['verifyssl'])
+		if (!$this->NextcloudConfig['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -58,7 +56,7 @@ class OcsLib
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->config['username'].":".$this->config['password'])
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -118,7 +116,7 @@ class OcsLib
 	{
 		$ch = curl_init();
 
-		$url = $this->config['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user).'/groups';
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user).'/groups';
 		$data = 'groupid='.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -128,7 +126,7 @@ class OcsLib
 		curl_setopt($ch, CURLOPT_POST, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
-		if (!$this->config['verifyssl'])
+		if (!$this->NextcloudConfig['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -136,7 +134,7 @@ class OcsLib
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->config['username'].":".$this->config['password'])
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -183,21 +181,21 @@ class OcsLib
 	{
 		$ch = curl_init();
 
-		$url = $this->config['url'].'ocs/v1.php/cloud/groups/'.curl_escape($ch, $group);
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups/'.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 
-		if (!$this->config['verifyssl'])
+		if (!$this->NextcloudConfig['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		}
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->config['username'].":".$this->config['password'])
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -240,6 +238,76 @@ class OcsLib
 					$user_arr[] = $row->textContent;
 				}
 				return $user_arr;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * Get the Apps of the Nextcloud instance
+	 * @return array of apps
+	 */
+	public function getApps()
+	{
+		$ch = curl_init();
+
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/apps';
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
+		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
+
+		if (!$this->NextcloudConfig['verifyssl'])
+		{
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		}
+		$headers = array(
+			'OCS-APIRequest: true',
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+		);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+		$response = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			show_error('Curl error: '.curl_error($ch));
+			curl_close($ch);
+			return false;
+		}
+		else
+		{
+			/*
+			<ocs>
+				<meta>
+					<status>ok</status>
+					<statuscode>100</statuscode>
+				</meta>
+				<data>
+			 		<appss>
+						<element>files</element>
+					</apps>
+				</data>
+			</ocs>
+			*/
+			curl_close($ch);
+			if ($this->_parseStatuscode($response) == '100')
+			{
+				$dom = new DOMDocument();
+				$dom->loadXML($response);
+				$usersnode = $dom->getElementsByTagName('apps');
+				$appslist = $usersnode[0]->getElementsByTagName('element');
+				$app_arr = array();
+				foreach ($appslist as $row)
+				{
+					$app_arr[] = $row->textContent;
+				}
+				return $app_arr;
 			}
 			else
 			{
