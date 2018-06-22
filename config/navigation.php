@@ -1,6 +1,6 @@
 <?php
 // Add Menu-Entry to Main Page
-$config['navigation_menu']['Vilesci/index']['Administration']['children']['Nextcloud'] = array(
+$config['navigation_menu']['Vilesci/index']['administration']['children']['Nextcloud'] = array(
 		'link' => base_url('index.ci.php/extensions/FHC-Core-Nextcloud/Nextcloud'),
 		'icon' => 'cloud-upload',
 		'description' => 'Nextcloud',

@@ -71,6 +71,13 @@ class Nextcloud extends Auth_Controller
 		else
 			echo "failed";
 		*/
+
+		/*
+		if($this->OcsModel->removeUserFromGroup($groupname, $username))
+			echo "ok";
+		else
+			echo "failed";
+		*/
 		$this->load->view('extensions/FHC-Core-Nextcloud/Nextcloud');
 	}
 }
