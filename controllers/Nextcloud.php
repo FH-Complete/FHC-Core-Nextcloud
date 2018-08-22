@@ -19,6 +19,9 @@
  */
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
+/**
+ * Handles manual Nextcloud Sync of lvs and corresponding users
+ */
 class Nextcloud extends Auth_Controller
 {
 	/**
@@ -27,57 +30,131 @@ class Nextcloud extends Auth_Controller
 	public function __construct()
 	{
 		parent::__construct(array(
-			'index'=>'admin:rw'
+			'index'=>'admin:rw',
+			'addLehrveranstaltungGroupsByParams'=>'admin:rw',
+			'addAllLehrveranstaltungGroups'=>'admin:rw',
+			'getLehrveranstaltungGroupStrings'=>'admin:r',
+			'getAusbildungssemesterByStudiensemesterAndStudiengang'=>'admin:r'
 			)
 		);
+
 		$this->config->load('extensions/FHC-Core-Nextcloud/config');
+
+		$this->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
+		$this->load->model('organisation/Studiengang_model', 'StudiengangModel');
+
+		$this->load->library('extensions/FHC-Core-Nextcloud/NextcloudSyncLib');
 	}
 
 	/**
 	 * Index Controller
+	 * Initializes GUI with necessary data
 	 * @return void
 	 */
 	public function index()
 	{
 		$this->load->library('WidgetLib');
-		$this->load->model('extensions/FHC-Core-Nextcloud/Ocs_Model', 'OcsModel');
 
-		/*
-		if($apps = $this->OcsModel->getApps())
+		$this->StudiensemesterModel->addSelect('studiensemester_kurzbz');
+		$this->StudiensemesterModel->addOrder('start', 'DESC');
+		$studiensemesterdata = $this->StudiensemesterModel->load();
+
+		if (isError($studiensemesterdata))
+			show_error($studiensemesterdata->retval);
+
+		$currstudiensemesterdata = $this->StudiensemesterModel->getLastOrAktSemester();
+
+		if (isError($currstudiensemesterdata))
+			show_error($currstudiensemesterdata->retval);
+
+		$studiensemester_kurzbz = $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
+
+		$studiengangdata = $this->StudiengangModel->getStudiengaengeByStudiensemester($studiensemester_kurzbz);
+
+		if (isError($studiengangdata))
+			show_error($studiengangdata->retval);
+
+		$studiengaenge = array();
+
+		foreach ($studiengangdata->retval as $studiengang)
 		{
-			echo "Apps:";
-			var_dump($apps);
+			$studiengangobj = new stdClass();
+			$studiengangobj->studiengang_kz = $studiengang->studiengang_kz;
+			$studiengangobj->kuerzel = $studiengang->kuerzel;
+			$studiengangobj->bezeichnung= $studiengang->bezeichnung;
+			$studiengaenge[] = $studiengangobj;
 		}
-		*/
 
-		/*
-		if($users = $this->OcsModel->getGroupMember($groupname))
+		$data = array(
+			'studiensemester' => $studiensemesterdata->retval,
+			'studiensemester_kurzbz' => $studiensemester_kurzbz,
+			'studiengaenge' => $studiengaenge
+		);
+
+		$this->load->view('extensions/FHC-Core-Nextcloud/Nextcloud', $data);
+	}
+
+	/**
+	 * Gets unique names of LV-groups and returns them as JSON
+	 */
+	public function getLehrveranstaltungGroupStrings()
+	{
+		$this->load->model('education/Lehrveranstaltung_model', 'LehrveranstaltungModel');
+
+		$studiensemester_kurzbz = $this->input->post('studiensemester');
+		$studiengang_kz = $this->input->post('studiengang_kz');
+		$ausbildungssemester = $this->input->post('ausbildungssemester');
+
+		$result = $this->LehrveranstaltungModel->getLehrveranstaltungGroupNames($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz);
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($result));
+	}
+
+	/**
+	 * Gets Ausbildungssemester based on Studiensemester and Studiengang
+	 */
+	public function getAusbildungssemesterByStudiensemesterAndStudiengang()
+	{
+		$studiensemester_kurzbz = $this->input->post('studiensemester');
+		$studiengang_kz = $this->input->post('studiengang_kz');
+
+		$result = $this->StudiensemesterModel->getAusbildungssemesterByStudiensemesterAndStudiengang($studiensemester_kurzbz, $studiengang_kz);
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($result));
+	}
+
+	public function addAllLehrveranstaltungGroups($studiensemester_kurzbz = null, $syncusers = true)
+	{
+		//TODO regex for studsem?
+		if (!isset($studiensemester_kurzbz))
 		{
-			echo "Group Members:";
-			var_dump($users);
+			$currstudiensemesterdata = $this->StudiensemesterModel->getLastOrAktSemester();
+
+			if (!hasData($currstudiensemesterdata))
+				show_error('no studiensemester retrieved');
+
+			$studiensemester_kurzbz = $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
 		}
-		*/
 
-		/*
-		if($this->OcsModel->addGroup($groupname))
-			echo "ok";
-		else
-			echo "failed";
-		*/
+		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers);
+	}
 
-		/*
-		if($this->OcsModel->addUserToGroup($groupname, $username))
-			echo "ok";
-		else
-			echo "failed";
-		*/
+	/**
+	 * Intitializes lv-group sync using post parameters
+	 */
+	public function addLehrveranstaltungGroupsByParams()
+	{
+		$studiensemester_kurzbz = $this->input->post('studiensemester');
+		$lehrveranstaltung_ids = $this->input->post('lvids');
+		$ausbildungssemester = $this->input->post('ausbildungssemester');
+		$studiengang_kz = $this->input->post('studiengang_kz');
+		$syncusers = $this->input->post('syncusers');
+		$syncusers = isset($syncusers) ? true : false;
 
-		/*
-		if($this->OcsModel->removeUserFromGroup($groupname, $username))
-			echo "ok";
-		else
-			echo "failed";
-		*/
-		$this->load->view('extensions/FHC-Core-Nextcloud/Nextcloud');
+		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz, $lehrveranstaltung_ids, $syncusers);
 	}
 }
