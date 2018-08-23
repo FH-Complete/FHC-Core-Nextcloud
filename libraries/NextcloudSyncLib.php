@@ -16,6 +16,15 @@ class NextcloudSyncLib
 		$this->ci =& get_instance();
 		$this->ci->load->model('education/Lehrveranstaltung_model', 'LehrveranstaltungModel');
 		$this->ci->load->model('extensions/FHC-Core-Nextcloud/Ocs_Model', 'OcsModel');
+
+		if ($this->ci->input->is_cli_request())
+		{
+			$this->nl = PHP_EOL;
+		}
+		else
+		{
+			$this->nl = '<br />';
+		}
 	}
 
 	/**
@@ -30,6 +39,9 @@ class NextcloudSyncLib
 	{
 		$groupdata = $this->ci->LehrveranstaltungModel->getLehrveranstaltungGroupNames($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz, $lehrveranstaltung_ids);
 
+		echo 'NEXTCLOUD SYNC';
+		echo $this->nl.str_repeat('-', 130);
+
 		if (hasData($groupdata))
 		{
 			foreach ($groupdata->retval as $group)
@@ -37,7 +49,7 @@ class NextcloudSyncLib
 				$lehrveranstaltung_id = $group->lehrveranstaltung_id;
 				$groupname = $group->lvgroupname;
 
-				echo '<br/>';
+				echo $this->nl.$this->nl;
 
 				if ($this->ci->OcsModel->addGroup($groupname))
 					echo 'ok, group '.$groupname.' created';
@@ -51,10 +63,11 @@ class NextcloudSyncLib
 		}
 		else
 		{
-			echo 'no lv groups found';
+			echo $this->nl.'no lv groups found';
 		}
 
-		echo "<br />done";
+		echo $this->nl.str_repeat('-', 130);
+		echo $this->nl.'NEXTCLOUD SYNC END';
 	}
 
 	/**
@@ -73,7 +86,7 @@ class NextcloudSyncLib
 			$groupname = $groupdata->retval[0]->lvgroupname;
 		else
 		{
-			echo "wrong number of groups";
+			echo $this->nl.'wrong number of lv groups';
 			return;
 		}
 
@@ -87,53 +100,63 @@ class NextcloudSyncLib
 		if (isError($studentdata))
 			show_error($studentdata->retval);
 
-		$lecturersadded = $studentsadded = 0;
+		$nextcloudusers = $this->ci->OcsModel->getGroupMember($groupname);
 
-		if (hasData($lecturerdata))
+		$lecturersadded = $studentsadded = $usersremoved = 0;
+		if (is_array($nextcloudusers))
 		{
-			foreach ($lecturerdata->retval as $lecturer)
+			$lecturersno = count($lecturerdata->retval);
+
+			$userstoadd = array_merge($lecturerdata->retval, $studentdata->retval);
+			$uid_arr = array();
+
+			for ($i = 0; $i < count($userstoadd); $i++)
 			{
-				echo '<br/>';
+				echo $this->nl;
 
-				$uid = $lecturer->uid;
+				$uid = $userstoadd[$i]->uid;
+				$uid_arr[] = $uid;
+				$lecturer = $i < $lecturersno;
+				$usertype = $lecturer ? 'lecturer' : 'student';
 
-				if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
+				if (in_array($uid, $nextcloudusers))
+					echo $usertype.' with uid '.$uid.' already exists in group '.$groupname;
+				else
 				{
-					echo 'ok, lecturer with uid '.$uid.' added to group '.$groupname;
-					$lecturersadded++;
+					if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
+					{
+						echo 'ok, '.$usertype.' with uid '.$uid.' added to group '.$groupname;
+						if ($lecturer)
+							$lecturersadded++;
+						else
+							$studentsadded++;
+					}
+					else
+						echo 'adding '.$usertype.' with uid '.$uid.' to group '.$groupname.' failed';
+				}
+			}
+
+			$userstoremove = array_diff($nextcloudusers, $uid_arr);
+
+			foreach ($userstoremove as $user)
+			{
+				echo $this->nl.'user in Nextcloud lvgroup but not in FAS lvgroup - removing '.$user.' from '.$groupname;
+
+				echo $this->nl;
+				if ($this->ci->OcsModel->removeUserFromGroup($groupname, $user))
+				{
+					echo 'user removed from group!';
+					$usersremoved++;
 				}
 				else
-					echo 'adding lecturer with uid '.$uid.' to group '.$groupname.' failed';
+				{
+					echo 'user removal failed!';
+				}
 			}
 		}
 		else
-		{
-			echo 'no lecturers';
-		}
+			echo $this->nl.'Nextcloudusers could not be retrieved!';
 
-		if (hasData($studentdata))
-		{
-
-			foreach ($studentdata->retval as $student)
-			{
-				echo '<br/>';
-
-				$uid = $student->uid;
-
-				if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
-				{
-					echo 'ok, student with uid '.$uid.' added to group '.$groupname;
-					$studentsadded++;
-				}
-				else
-					echo 'adding student with uid '.$uid.' to group '.$groupname.' failed';
-			}
-		}
-		else
-		{
-			echo 'no students';
-		}
-
-		echo "<br />done, ".$studentsadded." students, ".$lecturersadded." lecturers added";
+		echo $this->nl.' '.$groupname.' done, '.$studentsadded.' students, '.$lecturersadded.' lecturers added, '.$usersremoved.' users removed';
 	}
 }
