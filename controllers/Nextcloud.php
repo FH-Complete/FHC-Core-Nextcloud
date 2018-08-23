@@ -62,7 +62,7 @@ class Nextcloud extends Auth_Controller
 		if (isError($studiensemesterdata))
 			show_error($studiensemesterdata->retval);
 
-		$currstudiensemesterdata = $this->StudiensemesterModel->getLastOrAktSemester();
+		$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
 
 		if (isError($currstudiensemesterdata))
 			show_error($currstudiensemesterdata->retval);
@@ -132,7 +132,7 @@ class Nextcloud extends Auth_Controller
 		//TODO regex for studsem?
 		if (!isset($studiensemester_kurzbz))
 		{
-			$currstudiensemesterdata = $this->StudiensemesterModel->getLastOrAktSemester();
+			$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
 
 			if (!hasData($currstudiensemesterdata))
 				show_error('no studiensemester retrieved');
