@@ -28,6 +28,9 @@ class NextcloudSyncAll extends FHC_Controller
 			echo "Jobs must be run from the CLI";
 			exit;
 		}
+
+		$this->config->load('extensions/FHC-Core-Nextcloud/config');
+		$this->load->library('extensions/FHC-Core-Nextcloud/NextcloudSyncLib');
 	}
 
 	/**
@@ -44,14 +47,25 @@ class NextcloudSyncAll extends FHC_Controller
 	}
 
 	/**
-	 * @param null $studiensemester_kurzbz
-	 * @param bool $syncusers
+	 * Runs sync for all lvs (in current/next studiensemester) and oes (active)
 	 */
-	public function runAll($studiensemester_kurzbz = null, $syncusers = true)
+	public function runAll()
+	{
+		// Sync lv groups
+		$this->runLvGroups();
+
+		// Sync oe groups
+		$this->runOeGroups();
+	}
+
+	/**
+	 * Initializes sync for all lvs of all Studiengaenge for a given Studiensemester
+	 * @param null $studiensemester_kurzbz if not given, actual or next (in summer) semester is retrieved
+	 * @param bool $syncusers wether to sync students and lecturers of the group
+	 */
+	public function runLvGroups($studiensemester_kurzbz = null, $syncusers = true)
 	{
 		$this->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
-
-		$this->load->library('extensions/FHC-Core-Nextcloud/NextcloudSyncLib');
 
 		//TODO regex for studsem?
 		if (!isset($studiensemester_kurzbz))
@@ -65,5 +79,13 @@ class NextcloudSyncAll extends FHC_Controller
 		}
 
 		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers);
+	}
+
+	/**
+	 * Initializes Oe group sync
+	 */
+	public function runOeGroups()
+	{
+		$this->nextcloudsynclib->addOeGroups();
 	}
 }
