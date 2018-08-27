@@ -173,7 +173,84 @@ class Ocs_Model extends FHC_Model
 	}
 
 	/**
-	 * Get the Memebers of a group
+	 * Get a user
+	 * @param string $user Name of the group.
+	 * @return array of Users
+	 */
+	public function getUser($user)
+	{
+		$ch = curl_init();
+
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user);
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
+		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
+
+		if (!$this->NextcloudConfig['verifyssl'])
+		{
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		}
+		$headers = array(
+			'OCS-APIRequest: true',
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+		);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+		$response = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			show_error('Curl error: '.curl_error($ch));
+			curl_close($ch);
+			return false;
+		}
+		else
+		{
+			/*
+			<ocs>
+				<meta>
+					<status>ok</status>
+					<statuscode>100</statuscode>
+					<message>OK</message>
+					<totalitems></totalitems>
+					<itemsperpage></itemsperpage>
+				</meta>
+				<data>
+			 		<users>
+						<element>oesi</element>
+					</users>
+				</data>
+			</ocs>
+			*/
+			curl_close($ch);
+			//var_dump($response); die();
+			if ($this->_parseStatuscode($response) == '100')
+			{
+				$dom = new DOMDocument();
+				$dom->loadXML($response);
+
+				$user = new StdClass();
+				$emaildom = $dom->getElementsByTagName('email');
+				$user->email = $emaildom[0]->textContent;
+				$quotadom = $dom->getElementsByTagName('quota');
+				$user->quota = $quotadom[0]->textContent;
+				$enableddom = $dom->getElementsByTagName('enabled');
+				$user->enabled = $enableddom[0]->textContent;
+
+				return $user;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * Get the Members of a group
 	 * @param string $group Name of the group.
 	 * @return array of Users
 	 */
@@ -238,6 +315,76 @@ class Ocs_Model extends FHC_Model
 					$user_arr[] = $row->textContent;
 				}
 				return $user_arr;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * Get the Groups of the Nextcloud instance
+	 * @return array of groups
+	 */
+	public function getGroups()
+	{
+		$ch = curl_init();
+
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups';
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
+		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
+
+		if (!$this->NextcloudConfig['verifyssl'])
+		{
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		}
+		$headers = array(
+			'OCS-APIRequest: true',
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+		);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+		$response = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			show_error('Curl error: '.curl_error($ch));
+			curl_close($ch);
+			return false;
+		}
+		else
+		{
+			/*
+			<ocs>
+			  <meta>
+				<statuscode>100</statuscode>
+				<status>ok</status>
+			  </meta>
+			  <data>
+				<groups>
+				  <element>admin</element>
+				</groups>
+			  </data>
+			</ocs>
+			*/
+			curl_close($ch);
+			if ($this->_parseStatuscode($response) == '100')
+			{
+				$dom = new DOMDocument();
+				$dom->loadXML($response);
+				$usersnode = $dom->getElementsByTagName('groups');
+				$grouplist = $usersnode[0]->getElementsByTagName('element');
+				$group_arr = array();
+				foreach ($grouplist as $row)
+				{
+					$group_arr[] = $row->textContent;
+				}
+				return $group_arr;
 			}
 			else
 			{
@@ -368,6 +515,66 @@ class Ocs_Model extends FHC_Model
 				<itemsperpage></itemsperpage>
 			</meta>
 			<data/>
+			</ocs>
+			*/
+			curl_close($ch);
+			if ($this->_parseStatuscode($response) == '100')
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * Delete a group
+	 * @param string $group Name of Group.
+	 * @return boolean true if ok, false on error
+	 */
+	public function deleteGroup($group)
+	{
+		$ch = curl_init();
+
+		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups/'.curl_escape($ch, $group);
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
+		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
+
+		if (!$this->NextcloudConfig['verifyssl'])
+		{
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		}
+
+		$headers = array(
+			'OCS-APIRequest: true',
+			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+		);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+		$response = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			show_error('Curl error: '.curl_error($ch));
+			curl_close($ch);
+			return false;
+		}
+		else
+		{
+			/* Success response
+			<ocs>
+				<meta>
+					<statuscode>100</statuscode>
+					<status>ok</status>
+				</meta>
+				<data/>
 			</ocs>
 			*/
 			curl_close($ch);

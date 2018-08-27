@@ -65,18 +65,7 @@ class NextcloudSyncAll extends FHC_Controller
 	 */
 	public function runLvGroups($studiensemester_kurzbz = null, $syncusers = true)
 	{
-		$this->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
-
-		//TODO regex for studsem?
-		if (!isset($studiensemester_kurzbz))
-		{
-			$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
-
-			if (!hasData($currstudiensemesterdata))
-				show_error('no studiensemester retrieved');
-
-			$studiensemester_kurzbz = $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
-		}
+		$studiensemester_kurzbz = $this->_getAktOrNextSemester($studiensemester_kurzbz);
 
 		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers);
 	}
@@ -87,5 +76,37 @@ class NextcloudSyncAll extends FHC_Controller
 	public function runOeGroups()
 	{
 		$this->nextcloudsynclib->addOeGroups();
+	}
+
+	/**
+	 * Initializes deletion for all lvs of all Studiengaenge for a given Studiensemester
+	 * @param null $studiensemester_kurzbz
+	 */
+	public function deleteLvGroups($studiensemester_kurzbz = null)
+	{
+		$studiensemester_kurzbz = $this->_getAktOrNextSemester($studiensemester_kurzbz);
+
+		$this->nextcloudsynclib->deleteLehrveranstaltungGroups($studiensemester_kurzbz);
+	}
+
+	/**
+	 * Retrieves current or next (in summer) Studiensemester if not provided
+	 * @param $studiensemester_kurzbz
+	 * @return the studiensemester_kurzbz
+	 */
+	private function _getAktOrNextSemester($studiensemester_kurzbz)
+	{
+		$this->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
+
+		if (!isset($studiensemester_kurzbz) || !preg_match("/^[W|S]S\d{4,}$/", $studiensemester_kurzbz))
+		{
+			$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
+
+			if (!hasData($currstudiensemesterdata))
+				show_error('no studiensemester retrieved');
+
+			return $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
+		}
+		return $studiensemester_kurzbz;
 	}
 }

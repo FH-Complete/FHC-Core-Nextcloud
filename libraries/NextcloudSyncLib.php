@@ -3,7 +3,7 @@
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * Library for syncing lvs and lv-users with Nextcloud
+ * Library for syncing lv- and oe-groups with users to Nextcloud
  */
 class NextcloudSyncLib
 {
@@ -36,6 +36,14 @@ class NextcloudSyncLib
 	 */
 	public function addLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester = null, $studiengang_kz = null, $lehrveranstaltung_ids = null, $syncusers = true)
 	{
+		$nextcloudgroups =  $this->ci->OcsModel->getGroups();
+
+		if (!$nextcloudgroups)
+		{
+			echo 'Nextcloudgroups could not be retrieved!';
+			return;
+		}
+
 		$this->ci->load->model('education/Lehrveranstaltung_model', 'LehrveranstaltungModel');
 
 		$groupdata = $this->ci->LehrveranstaltungModel->getLehrveranstaltungGroupNames($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz, $lehrveranstaltung_ids);
@@ -54,14 +62,18 @@ class NextcloudSyncLib
 
 				echo $this->nl;
 
-				//TODO check if failed because group already exists
-				if ($this->ci->OcsModel->addGroup($groupname))
-				{
-					echo 'ok, lv group '.$groupname.' created';
-					$groupsadded++;
-				}
+				if (in_array($groupname, $nextcloudgroups))
+					echo 'group '.$groupname.' already exists';
 				else
-					echo 'creation of lv group '.$groupname.' failed';
+				{
+					if ($this->ci->OcsModel->addGroup($groupname))
+					{
+						echo 'ok, lv group '.$groupname.' created';
+						$groupsadded++;
+					}
+					else
+						echo 'creation of lv group '.$groupname.' failed';
+				}
 
 				if (isset($syncusers) && $syncusers === true)
 				{
@@ -124,21 +136,25 @@ class NextcloudSyncLib
 	 */
 	public function addOeGroups()
 	{
+		$nextcloudgroups = $this->ci->OcsModel->getGroups();
+
+		if (!$nextcloudgroups)
+		{
+			echo 'Nextcloudgroups could not be retrieved!';
+			return;
+		}
+
 		$this->ci->load->model('organisation/Organisationseinheit_model', 'OrganisationseinheitModel');
 		$this->ci->load->model('person/Benutzerfunktion_model', 'BenutzerfunktionModel');
 
 		$this->ci->OrganisationseinheitModel->addSelect('oe_kurzbz');
+		$this->ci->OrganisationseinheitModel->addOrder('oe_kurzbz');
 		$oes = $this->ci->OrganisationseinheitModel->loadWhere(array('aktiv' => true));
-
-		if (isError($oes))
-			show_error($oes->retval);
 
 		echo 'NEXTCLOUD ORGANISATIONSEINHEITEN SYNC';
 		echo $this->nl.str_repeat('-', 50);
 
 		$groupsadded = $usersadded = $usersremoved = 0;
-
-		$cnt = 0;
 
 		if (hasData($oes))
 		{
@@ -146,19 +162,27 @@ class NextcloudSyncLib
 			{
 				$oe_kurzbz = $oe->oe_kurzbz;
 
-				$benutzer = $this->ci->BenutzerfunktionModel->getByOeAndFunktion($oe->oe_kurzbz, array('Leitung', 'oezuordnung'));
+				$benutzer = $this->ci->BenutzerfunktionModel->getBenutzerFunktionen(array('Leitung', 'oezuordnung'), $oe_kurzbz, false, true);
+
+				if (isError($benutzer))
+					show_error($benutzer->retval);
 
 				echo $this->nl;
 
 				if (hasData($benutzer))
 				{
-					if ($this->ci->OcsModel->addGroup($oe_kurzbz))
-					{
-						echo 'ok, oe group '.$oe_kurzbz.' created';
-						$groupsadded++;
-					}
+					if (in_array($oe_kurzbz, $nextcloudgroups))
+						echo 'group '.$oe_kurzbz.' already exists';
 					else
-						echo 'creation of oe group '.$oe_kurzbz.' failed';
+					{
+						if ($this->ci->OcsModel->addGroup($oe_kurzbz))
+						{
+							echo 'ok, oe group '.$oe_kurzbz.' created';
+							$groupsadded++;
+						}
+						else
+							echo 'creation of oe group '.$oe_kurzbz.' failed';
+					}
 				}
 				else
 				{
@@ -167,9 +191,6 @@ class NextcloudSyncLib
 				$syncedusers = $this->_syncUsers($benutzer->retval, $oe_kurzbz);
 				$usersadded += $syncedusers[0];
 				$usersremoved += $syncedusers[1];
-				$cnt++;
-				if ($cnt > 50)
-					break;
 			}
 		}
 		else
@@ -181,6 +202,66 @@ class NextcloudSyncLib
 		echo $this->nl.'SYNC FINISHED. ALTOGETHER: '.$groupsadded.' OES added, '.$usersadded.' users added, '.$usersremoved.' users removed';
 		echo $this->nl.str_repeat('-', 50);
 		echo $this->nl.'NEXTCLOUD ORGANISATIONSEINHEITEN SYNC END'.$this->nl;
+	}
+
+	/**
+	 * Deletes Lehrveranstaltung Groups in Nextcloud
+	 * @param $studiensemester_kurzbz
+	 * @param null $ausbildungssemester
+	 * @param null $studiengang_kz
+	 * @param null $lehrveranstaltung_ids
+	 */
+	public function deleteLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester = null, $studiengang_kz = null, $lehrveranstaltung_ids = null)
+	{
+		$nextcloudgroups =  $this->ci->OcsModel->getGroups();
+		if (!$nextcloudgroups)
+		{
+			echo 'Nextcloudgroups could not be retrieved!';
+			return;
+		}
+
+		$this->ci->load->model('education/Lehrveranstaltung_model', 'LehrveranstaltungModel');
+
+		$groupdata = $this->ci->LehrveranstaltungModel->getLehrveranstaltungGroupNames($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz, $lehrveranstaltung_ids);
+
+		echo 'NEXTCLOUD LEHRVERANSTALTUNGEN DELETION';
+		echo $this->nl.str_repeat('-', 50);
+
+		$groupsdeleted = 0;
+
+		if (hasData($groupdata))
+		{
+			foreach ($groupdata->retval as $group)
+			{
+				$groupname = $group->lvgroupname;
+
+				echo $this->nl;
+
+				if (in_array($groupname, $nextcloudgroups))
+				{
+					if ($this->ci->OcsModel->deleteGroup($groupname))
+					{
+						echo 'ok, lv group '.$groupname.' deleted';
+						$groupsdeleted++;
+					}
+					else
+						echo 'deletion of lv group '.$groupname.' failed';
+				}
+				else
+				{
+					echo 'group '.$groupname.' does not exist';
+				}
+			}
+		}
+		else
+		{
+			echo $this->nl.'no lv groups found in source system';
+		}
+
+		echo $this->nl.str_repeat('-', 50);
+		echo $this->nl.'DELETION FINISHED. ALTOGETHER: '.$groupsdeleted.' LVs deleted';
+		echo $this->nl.str_repeat('-', 50);
+		echo $this->nl.'NEXTCLOUD LEHRVERANSTALTUNGEN DELETION END'.$this->nl;
 	}
 
 	/**
@@ -207,7 +288,9 @@ class NextcloudSyncLib
 				$uid_arr[] = $uid;
 
 				if (in_array($uid, $nextcloudusers))
+				{
 					echo 'user with uid '.$uid.' already exists in group '.$groupname;
+				}
 				else
 				{
 					if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
@@ -216,7 +299,9 @@ class NextcloudSyncLib
 						$usersadded++;
 					}
 					else
+					{
 						echo 'adding user with uid '.$uid.' to group '.$groupname.' failed';
+					}
 				}
 			}
 
