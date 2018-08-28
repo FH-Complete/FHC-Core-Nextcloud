@@ -22,3 +22,10 @@ $config['FHC-Core-Nextcloud']['password'] = 'password';
  * Default: true
  */
 $config['FHC-Core-Nextcloud']['verifyssl'] = true;
+
+/**
+ * Wether to run in debug mode, shows all text output if true, only errors otherwise
+ * Values: true | false
+ * Default: false
+ */
+$config['FHC-Core-Nextcloud']['debugmode'] = false;
