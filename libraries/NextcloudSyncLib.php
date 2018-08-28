@@ -16,6 +16,10 @@ class NextcloudSyncLib
 		$this->ci =& get_instance();
 		$this->ci->load->model('extensions/FHC-Core-Nextcloud/Ocs_Model', 'OcsModel');
 
+		$config = $this->ci->config->item('FHC-Core-Nextcloud');
+		$this->debugmode = $config['debugmode'];
+		$this->funktionenToSync = array('Leitung', 'oezuordnung');
+
 		if ($this->ci->input->is_cli_request())
 		{
 			$this->nl = PHP_EOL;
@@ -51,7 +55,13 @@ class NextcloudSyncLib
 		echo 'NEXTCLOUD LEHRVERANSTALTUNGEN SYNC';
 		echo $this->nl.str_repeat('-', 50);
 
-		$groupsadded = $usersadded = $usersremoved = 0;
+		$results = array(
+			'groupsadded' => 0, 'usersadded' => 0,
+			'usersremoved' => 0, 'usersaddfailed' => 0,
+			'usersremovefailed' => 0
+		);
+
+		$starttime = new DateTime(date('d.m.Y H:i:s'));
 
 		if (hasData($groupdata))
 		{
@@ -60,26 +70,33 @@ class NextcloudSyncLib
 				$lehrveranstaltung_id = $group->lehrveranstaltung_id;
 				$groupname = $group->lvgroupname;
 
-				echo $this->nl;
+				if ($this->debugmode)
 
 				if (in_array($groupname, $nextcloudgroups))
-					echo 'group '.$groupname.' already exists';
+				{
+					if ($this->debugmode)
+						echo $this->nl.'group '.$groupname.' already exists';
+				}
 				else
 				{
 					if ($this->ci->OcsModel->addGroup($groupname))
 					{
-						echo 'ok, lv group '.$groupname.' created';
-						$groupsadded++;
+						if ($this->debugmode)
+							echo $this->nl.'ok, lv group '.$groupname.' created';
+						$results['groupsadded']++;
 					}
 					else
-						echo 'creation of lv group '.$groupname.' failed';
+						echo $this->nl.'creation of lv group '.$groupname.' failed';
 				}
 
 				if (isset($syncusers) && $syncusers === true)
 				{
 					$syncedusers = $this->addUsersToLvGroup($studiensemester_kurzbz, $lehrveranstaltung_id);
-					$usersadded += $syncedusers[0];
-					$usersremoved += $syncedusers[1];
+					$results['usersadded'] += $syncedusers[0];
+					$results['usersadded'] += $syncedusers[0];
+					$results['usersremoved'] += $syncedusers[1];
+					$results['usersaddfailed'] += $syncedusers[2];
+					$results['usersremovefailed'] += $syncedusers[3];
 				}
 			}
 		}
@@ -88,10 +105,9 @@ class NextcloudSyncLib
 			echo $this->nl.'no lv groups found in source system';
 		}
 
-		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.'SYNC FINISHED. ALTOGETHER: '.$groupsadded.' LVs added, '.$usersadded.' users added, '.$usersremoved.' users removed';
-		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.'NEXTCLOUD LEHRVERANSTALTUNGEN SYNC END'.$this->nl;
+		$endtime = new DateTime(date('d.m.Y H:i:s'));
+
+		$this->_printSyncFooter('lehrveranstaltungen', $results, $starttime, $endtime);
 	}
 
 	/**
@@ -112,7 +128,7 @@ class NextcloudSyncLib
 			$groupname = $groupdata->retval[0]->lvgroupname;
 		else
 		{
-			echo $this->nl.'wrong number of lv groups';
+			echo $this->nl.'wrong number of lv groups for lvid '.$lehrveranstaltung_id;
 			return;
 		}
 
@@ -154,7 +170,13 @@ class NextcloudSyncLib
 		echo 'NEXTCLOUD ORGANISATIONSEINHEITEN SYNC';
 		echo $this->nl.str_repeat('-', 50);
 
-		$groupsadded = $usersadded = $usersremoved = 0;
+		$results = array(
+			'groupsadded' => 0, 'usersadded' => 0,
+			'usersremoved' => 0, 'usersaddfailed' => 0,
+			'usersremovefailed' => 0
+		);
+
+		$starttime = new DateTime(date('d.m.Y H:i:s'));
 
 		if (hasData($oes))
 		{
@@ -162,35 +184,40 @@ class NextcloudSyncLib
 			{
 				$oe_kurzbz = $oe->oe_kurzbz;
 
-				$benutzer = $this->ci->BenutzerfunktionModel->getBenutzerFunktionen(array('Leitung', 'oezuordnung'), $oe_kurzbz, false, true);
+				$benutzer = $this->ci->BenutzerfunktionModel->getBenutzerFunktionen($this->funktionenToSync, $oe_kurzbz, false, true);
 
 				if (isError($benutzer))
 					show_error($benutzer->retval);
 
-				echo $this->nl;
-
 				if (hasData($benutzer))
 				{
 					if (in_array($oe_kurzbz, $nextcloudgroups))
-						echo 'group '.$oe_kurzbz.' already exists';
+					{
+						if ($this->debugmode)
+							echo $this->nl.'group '.$oe_kurzbz.' already exists';
+					}
 					else
 					{
 						if ($this->ci->OcsModel->addGroup($oe_kurzbz))
 						{
-							echo 'ok, oe group '.$oe_kurzbz.' created';
-							$groupsadded++;
+							if ($this->debugmode)
+								echo $this->nl.'ok, oe group '.$oe_kurzbz.' created';
+							$results['groupsadded']++;
 						}
 						else
-							echo 'creation of oe group '.$oe_kurzbz.' failed';
+							echo $this->nl.'creation of oe group '.$oe_kurzbz.' failed';
 					}
 				}
 				else
 				{
-					echo 'no user for oe group '.$oe_kurzbz.' - skipping creation';
+					if ($this->debugmode)
+						echo $this->nl.'no user for oe group '.$oe_kurzbz.' - skipping creation';
 				}
 				$syncedusers = $this->_syncUsers($benutzer->retval, $oe_kurzbz);
-				$usersadded += $syncedusers[0];
-				$usersremoved += $syncedusers[1];
+				$results['usersadded'] += $syncedusers[0];
+				$results['usersremoved'] += $syncedusers[1];
+				$results['usersaddfailed'] += $syncedusers[2];
+				$results['usersremovefailed'] += $syncedusers[3];
 			}
 		}
 		else
@@ -198,10 +225,9 @@ class NextcloudSyncLib
 			echo $this->nl.'no oes found in source system';
 		}
 
-		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.'SYNC FINISHED. ALTOGETHER: '.$groupsadded.' OES added, '.$usersadded.' users added, '.$usersremoved.' users removed';
-		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.'NEXTCLOUD ORGANISATIONSEINHEITEN SYNC END'.$this->nl;
+		$endtime = new DateTime(date('d.m.Y H:i:s'));
+
+		$this->_printSyncFooter('ORGANISATIONSEINHEITEN', $results, $starttime, $endtime);
 	}
 
 	/**
@@ -275,32 +301,34 @@ class NextcloudSyncLib
 	{
 		$nextcloudusers = $this->ci->OcsModel->getGroupMember($groupname);
 
-		$usersadded = $usersremoved = 0;
+		$usersadded = $usersremoved = $usersaddfailed = $usersremovefailed = 0;
+
 		if (is_array($nextcloudusers))
 		{
 			$uid_arr = array();
 
 			for ($i = 0; $i < count($userstoadd); $i++)
 			{
-				echo $this->nl;
-
 				$uid = $userstoadd[$i]->uid;
 				$uid_arr[] = $uid;
 
 				if (in_array($uid, $nextcloudusers))
 				{
-					echo 'user with uid '.$uid.' already exists in group '.$groupname;
+					if ($this->debugmode)
+						echo $this->nl.'user with uid '.$uid.' already exists in group '.$groupname;
 				}
 				else
 				{
 					if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
 					{
-						echo 'ok, user with uid '.$uid.' added to group '.$groupname;
+						if ($this->debugmode)
+							echo $this->nl.'ok, user with uid '.$uid.' added to group '.$groupname;
 						$usersadded++;
 					}
 					else
 					{
-						echo 'adding user with uid '.$uid.' to group '.$groupname.' failed';
+						echo $this->nl.'adding user with uid '.$uid.' to group '.$groupname.' failed';
+						$usersaddfailed++;
 					}
 				}
 			}
@@ -309,25 +337,46 @@ class NextcloudSyncLib
 
 			foreach ($userstoremove as $user)
 			{
-				echo $this->nl.'user in Nextcloud group but not in source system group - removing '.$user.' from '.$groupname;
-
-				echo $this->nl;
 				if ($this->ci->OcsModel->removeUserFromGroup($groupname, $user))
 				{
-					echo 'user removed from group!';
+					if ($this->debugmode)
+						echo $this->nl.'user '.$user.' removed from group '.$groupname;
 					$usersremoved++;
 				}
 				else
 				{
-					echo 'user removal failed!';
+					echo $this->nl.'removal of user '.$user.' from group '.$groupname.' failed';
+					$usersremovefailed++;
 				}
 			}
 		}
 		else
-			echo $this->nl.'Nextcloudusers could not be retrieved!';
+			echo $this->nl.'Nextcloudusers could not be retrieved for group '.$groupname;
 
-		echo $this->nl.$groupname.' done, '.$usersadded.' users added, '.$usersremoved.' users removed.'.$this->nl;
+		if ($this->debugmode)
+			echo $this->nl.$groupname.' done, '.$usersadded.' users added, '.$usersremoved.' users removed.'.$this->nl;
 
-		return array($usersadded, $usersremoved);
+		return array($usersadded, $usersremoved, $usersaddfailed, $usersremovefailed);
+	}
+
+	/**
+	 * Prints sync footer
+	 * @param $syncname
+	 * @param $groupsadded
+	 * @param $usersadded
+	 * @param $usersremoved
+	 * @param $starttime
+	 * @param $endtime
+	 */
+	private function _printSyncFooter($syncname, $results, $starttime, $endtime)
+	{
+		$timedifference = date_diff($starttime, $endtime);
+
+		echo $this->nl.str_repeat('-', 50);
+		echo $this->nl.strtoupper($syncname).' SYNC FINISHED. ALTOGETHER: '.$results['groupsadded'].' groups added, '.$results['usersadded'].' users added, ';
+		echo $results['usersremoved'].' users removed, '.$results['usersaddfailed'].' users failed to add, '.$results['usersremovefailed'].' users failed to remove';
+		echo $this->nl.'SYNC TOOK '.($timedifference->days == 0 ? '' : $timedifference->days.' days, ').$timedifference->h.' hours, '.$timedifference->i.' minutes, '.$timedifference->s.' seconds';
+		echo $this->nl.'NEXTCLOUD '.strtoupper($syncname).' SYNC END';
+		echo $this->nl.str_repeat('-', 50).$this->nl;
 	}
 }
