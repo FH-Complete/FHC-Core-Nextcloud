@@ -189,14 +189,16 @@ class NextcloudSyncLib
 				if (isError($benutzer))
 					show_error($benutzer->retval);
 
-				if (hasData($benutzer))
+				$syncusrs = true;
+
+				if (in_array($oe_kurzbz, $nextcloudgroups))
 				{
-					if (in_array($oe_kurzbz, $nextcloudgroups))
-					{
-						if ($this->debugmode)
-							echo $this->nl.'group '.$oe_kurzbz.' already exists';
-					}
-					else
+					if ($this->debugmode)
+						echo $this->nl.'group '.$oe_kurzbz.' already exists';
+				}
+				else
+				{
+					if (hasData($benutzer))
 					{
 						if ($this->ci->OcsModel->addGroup($oe_kurzbz))
 						{
@@ -207,17 +209,22 @@ class NextcloudSyncLib
 						else
 							echo $this->nl.'creation of oe group '.$oe_kurzbz.' failed';
 					}
+					else
+					{
+						if ($this->debugmode)
+							echo $this->nl.'no user for oe group '.$oe_kurzbz.' - skipping creation'.$this->nl;
+						$syncusrs = false;
+					}
 				}
-				else
+
+				if ($syncusrs)
 				{
-					if ($this->debugmode)
-						echo $this->nl.'no user for oe group '.$oe_kurzbz.' - skipping creation';
+					$syncedusers = $this->_syncUsers($benutzer->retval, $oe_kurzbz);
+					$results['usersadded'] += $syncedusers[0];
+					$results['usersremoved'] += $syncedusers[1];
+					$results['usersaddfailed'] += $syncedusers[2];
+					$results['usersremovefailed'] += $syncedusers[3];
 				}
-				$syncedusers = $this->_syncUsers($benutzer->retval, $oe_kurzbz);
-				$results['usersadded'] += $syncedusers[0];
-				$results['usersremoved'] += $syncedusers[1];
-				$results['usersaddfailed'] += $syncedusers[2];
-				$results['usersremovefailed'] += $syncedusers[3];
 			}
 		}
 		else
@@ -307,9 +314,9 @@ class NextcloudSyncLib
 		{
 			$uid_arr = array();
 
-			for ($i = 0; $i < count($userstoadd); $i++)
+			foreach ($userstoadd as $user)
 			{
-				$uid = $userstoadd[$i]->uid;
+				$uid = $user->uid;
 				$uid_arr[] = $uid;
 
 				if (in_array($uid, $nextcloudusers))
