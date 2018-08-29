@@ -56,7 +56,7 @@ class NextcloudSyncLib
 		echo $this->nl.str_repeat('-', 50);
 
 		$results = array(
-			'groupsadded' => 0, 'usersadded' => 0,
+			'groupsadded' => 0, 'groupsaddfailed' => 0, 'usersadded' => 0,
 			'usersremoved' => 0, 'usersaddfailed' => 0,
 			'usersremovefailed' => 0
 		);
@@ -86,13 +86,15 @@ class NextcloudSyncLib
 						$results['groupsadded']++;
 					}
 					else
+					{
 						echo $this->nl.'creation of lv group '.$groupname.' failed';
+						$results['groupsaddfailed']++;
+					}
 				}
 
 				if (isset($syncusers) && $syncusers === true)
 				{
 					$syncedusers = $this->addUsersToLvGroup($studiensemester_kurzbz, $lehrveranstaltung_id);
-					$results['usersadded'] += $syncedusers[0];
 					$results['usersadded'] += $syncedusers[0];
 					$results['usersremoved'] += $syncedusers[1];
 					$results['usersaddfailed'] += $syncedusers[2];
@@ -171,7 +173,7 @@ class NextcloudSyncLib
 		echo $this->nl.str_repeat('-', 50);
 
 		$results = array(
-			'groupsadded' => 0, 'usersadded' => 0,
+			'groupsadded' => 0, 'groupsaddfailed' => 0, 'usersadded' => 0,
 			'usersremoved' => 0, 'usersaddfailed' => 0,
 			'usersremovefailed' => 0
 		);
@@ -207,7 +209,10 @@ class NextcloudSyncLib
 							$results['groupsadded']++;
 						}
 						else
+						{
 							echo $this->nl.'creation of oe group '.$oe_kurzbz.' failed';
+							$results['groupsaddfailed']++;
+						}
 					}
 					else
 					{
@@ -380,7 +385,8 @@ class NextcloudSyncLib
 		$timedifference = date_diff($starttime, $endtime);
 
 		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.strtoupper($syncname).' SYNC FINISHED. ALTOGETHER: '.$results['groupsadded'].' groups added, '.$results['usersadded'].' users added, ';
+		echo $this->nl.strtoupper($syncname).' SYNC FINISHED.';
+		echo $this->nl.'ALTOGETHER: '.$results['groupsadded'].' groups added, '.$results['groupsaddfailed'].' groups failed to add, '.$results['usersadded'].' users added, ';
 		echo $results['usersremoved'].' users removed, '.$results['usersaddfailed'].' users failed to add, '.$results['usersremovefailed'].' users failed to remove';
 		echo $this->nl.'SYNC TOOK '.($timedifference->days == 0 ? '' : $timedifference->days.' days, ').$timedifference->h.' hours, '.$timedifference->i.' minutes, '.$timedifference->s.' seconds';
 		echo $this->nl.'NEXTCLOUD '.strtoupper($syncname).' SYNC END';
