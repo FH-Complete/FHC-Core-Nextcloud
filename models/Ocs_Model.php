@@ -226,7 +226,6 @@ class Ocs_Model extends FHC_Model
 			</ocs>
 			*/
 			curl_close($ch);
-			//var_dump($response); die();
 			if ($this->_parseStatuscode($response) == '100')
 			{
 				$dom = new DOMDocument();
