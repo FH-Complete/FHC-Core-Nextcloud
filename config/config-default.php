@@ -2,9 +2,19 @@
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
+ * Connection protocol to Nextcloud instance
+ */
+$config['FHC-Core-Nextcloud']['protocol'] = 'https';
+
+/**
  * URL to Nextcloud instance
  */
-$config['FHC-Core-Nextcloud']['url'] = 'https://cloud.example.com/';
+$config['FHC-Core-Nextcloud']['host'] = 'cloud.example.com';
+
+/**
+ * Path to Nextcloud API
+ */
+$config['FHC-Core-Nextcloud']['path'] = 'ocs/v1.php/cloud';
 
 /**
  * Admin User for Nextcloud instance
@@ -24,7 +34,7 @@ $config['FHC-Core-Nextcloud']['password'] = 'password';
 $config['FHC-Core-Nextcloud']['verifyssl'] = true;
 
 /**
- * Wether to run in debug mode, shows all text output if true, only errors otherwise
+ * Whether to run in debug mode, shows all text output if true, only errors otherwise
  * Values: true | false
  * Default: false
  */

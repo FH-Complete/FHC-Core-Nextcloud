@@ -14,7 +14,7 @@ class NextcloudSyncLib
 	{
 		// Gets CI instance
 		$this->ci =& get_instance();
-		$this->ci->load->model('extensions/FHC-Core-Nextcloud/Ocs_Model', 'OcsModel');
+		$this->ci->load->model('extensions/FHC-Core-Nextcloud/Ocs_Httpful_Model', 'OcsModel');
 
 		$config = $this->ci->config->item('FHC-Core-Nextcloud');
 		$this->debugmode = $config['debugmode'];
@@ -339,8 +339,28 @@ class NextcloudSyncLib
 					}
 					else
 					{
-						echo $this->nl.'adding user with uid '.$uid.' to group '.$groupname.' failed';
-						$usersaddfailed++;
+						if ($this->debugmode)
+							echo $this->nl.'first add failed to group '.$groupname.', searching for user '.$uid.'...';
+						$user = $this->ci->OcsModel->searchUser($uid);
+
+						if (!is_array($user) || empty($user))
+						{
+							echo $this->nl.'user with uid '.$uid.' not found in Nextcloud';
+							$usersaddfailed++;
+							continue;
+						}
+
+						if ($this->ci->OcsModel->addUserToGroup($groupname, $uid))
+						{
+							if ($this->debugmode)
+								echo $this->nl.'ok, user with uid '.$uid.' added to group '.$groupname.' after search';
+							$usersadded++;
+						}
+						else
+						{
+							echo $this->nl.'adding user with uid '.$uid.' to group '.$groupname.' failed';
+							$usersaddfailed++;
+						}
 					}
 				}
 			}
@@ -366,7 +386,7 @@ class NextcloudSyncLib
 			echo $this->nl.'Nextcloudusers could not be retrieved for group '.$groupname;
 
 		if ($this->debugmode)
-			echo $this->nl.$groupname.' done, '.$usersadded.' users added, '.$usersremoved.' users removed.'.$this->nl;
+			echo $this->nl.$groupname.' done, '.$usersadded.' users added, '.$usersaddfailed.' users failed to add, '.$usersremoved.' users removed, '.$usersremovefailed.' users failed to remove.'.$this->nl;
 
 		return array($usersadded, $usersremoved, $usersaddfailed, $usersremovefailed);
 	}

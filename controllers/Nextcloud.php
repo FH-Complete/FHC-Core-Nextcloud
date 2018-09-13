@@ -127,22 +127,6 @@ class Nextcloud extends Auth_Controller
 			->set_output(json_encode($result));
 	}
 
-	public function addAllLehrveranstaltungGroups($studiensemester_kurzbz = null, $syncusers = true)
-	{
-		//TODO regex for studsem?
-		if (!isset($studiensemester_kurzbz))
-		{
-			$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
-
-			if (!hasData($currstudiensemesterdata))
-				show_error('no studiensemester retrieved');
-
-			$studiensemester_kurzbz = $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
-		}
-
-		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers);
-	}
-
 	/**
 	 * Intitializes lv-group sync using post parameters
 	 */

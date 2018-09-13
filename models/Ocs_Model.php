@@ -21,12 +21,17 @@ if (! defined('BASEPATH')) exit('No direct script access allowed');
 
 class Ocs_Model extends FHC_Model
 {
+	private $_nextcloud_config;
+	private $_base_url;
+
 	/**
 	 * Constructor
 	 */
 	public function __construct()
 	{
-		$this->NextcloudConfig = $this->config->item('FHC-Core-Nextcloud');
+		$this->_nextcloud_config= $this->config->item('FHC-Core-Nextcloud');
+		$this->_base_url = $this->_nextcloud_config['protocol'].'://'.$this->_nextcloud_config['host'].'/'.
+			$this->_nextcloud_config['path'];
 	}
 
 	/**
@@ -38,7 +43,7 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups';
+		$url = $this->_base_url.'/groups';
 		$data = 'groupid='.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -48,7 +53,7 @@ class Ocs_Model extends FHC_Model
 		curl_setopt($ch, CURLOPT_POST, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -56,7 +61,7 @@ class Ocs_Model extends FHC_Model
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -116,7 +121,7 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user).'/groups';
+		$url = $this->_base_url.'/users/'.curl_escape($ch, $user).'/groups';
 		$data = 'groupid='.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -126,7 +131,7 @@ class Ocs_Model extends FHC_Model
 		curl_setopt($ch, CURLOPT_POST, true);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -134,7 +139,7 @@ class Ocs_Model extends FHC_Model
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -181,21 +186,21 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user);
+		$url = $this->_base_url.'/users/'.curl_escape($ch, $user);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		}
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -249,6 +254,82 @@ class Ocs_Model extends FHC_Model
 	}
 
 	/**
+	 * Search a user
+	 * @param $user
+	 * @return array of Users
+	 */
+	public function searchUser($user, $limit=1)
+	{
+		$ch = curl_init();
+
+		$url = $this->_base_url.'/users?search='.curl_escape($ch, $user).'&limit='.curl_escape($ch, $limit);
+
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
+		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
+
+		if (!$this->_nextcloud_config['verifyssl'])
+		{
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		}
+		$headers = array(
+			'OCS-APIRequest: true',
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
+		);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+		$response = curl_exec($ch);
+
+		if (curl_errno($ch))
+		{
+			show_error('Curl error: '.curl_error($ch));
+			curl_close($ch);
+			return false;
+		}
+		else
+		{
+			/*
+			<ocs>
+				<meta>
+					<status>ok</status>
+					<statuscode>100</statuscode>
+					<message>OK</message>
+					<totalitems></totalitems>
+					<itemsperpage></itemsperpage>
+				</meta>
+				<data>
+			 		<users>
+						<element>oesi</element>
+					</users>
+				</data>
+			</ocs>
+			*/
+			curl_close($ch);
+
+			if ($this->_parseStatuscode($response) == '100')
+			{
+				$dom = new DOMDocument();
+				$dom->loadXML($response);
+				$usersnode = $dom->getElementsByTagName('users');
+				$userslist = $usersnode[0]->getElementsByTagName('element');
+				$user_arr = array();
+				foreach ($userslist as $row)
+				{
+					$user_arr[] = $row->textContent;
+				}
+
+				return $user_arr;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	/**
 	 * Get the Members of a group
 	 * @param string $group Name of the group.
 	 * @return array of Users
@@ -257,21 +338,21 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups/'.curl_escape($ch, $group);
+		$url = $this->_base_url.'/groups/'.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		}
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -330,21 +411,21 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups';
+		$url = $this->_base_url.'/groups';
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		}
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -400,21 +481,21 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/apps';
+		$url = $this->_base_url.'/apps';
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		}
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -472,7 +553,7 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/users/'.curl_escape($ch, $user).'/groups';
+		$url = $this->_base_url.'/users/'.curl_escape($ch, $user).'/groups';
 		$data = 'groupid='.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -482,7 +563,7 @@ class Ocs_Model extends FHC_Model
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE'); 
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -490,7 +571,7 @@ class Ocs_Model extends FHC_Model
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
@@ -537,7 +618,7 @@ class Ocs_Model extends FHC_Model
 	{
 		$ch = curl_init();
 
-		$url = $this->NextcloudConfig['url'].'ocs/v1.php/cloud/groups/'.curl_escape($ch, $group);
+		$url = $this->_base_url.'/groups/'.curl_escape($ch, $group);
 
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -545,7 +626,7 @@ class Ocs_Model extends FHC_Model
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
 
-		if (!$this->NextcloudConfig['verifyssl'])
+		if (!$this->_nextcloud_config['verifyssl'])
 		{
 			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -553,7 +634,7 @@ class Ocs_Model extends FHC_Model
 
 		$headers = array(
 			'OCS-APIRequest: true',
-			'Authorization: Basic '. base64_encode($this->NextcloudConfig['username'].":".$this->NextcloudConfig['password'])
+			'Authorization: Basic '. base64_encode($this->_nextcloud_config['username'].":".$this->_nextcloud_config['password'])
 		);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
