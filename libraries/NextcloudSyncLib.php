@@ -37,8 +37,10 @@ class NextcloudSyncLib
 	 * @param null $studiengang_kz
 	 * @param null $lehrveranstaltung_ids
 	 * @param bool $syncusers wether to add the users of lv after creating group
+	 * @param int $splitsize number of chunks to split into when parallel processing
+	 * @param int $part number of the chunk needed after split
 	 */
-	public function addLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester = null, $studiengang_kz = null, $lehrveranstaltung_ids = null, $syncusers = true)
+	public function addLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester = null, $studiengang_kz = null, $lehrveranstaltung_ids = null, $syncusers = true, $splitsize = 1, $part = 1)
 	{
 		$nextcloudgroups =  $this->ci->OcsModel->getGroups();
 
@@ -52,7 +54,18 @@ class NextcloudSyncLib
 
 		$groupdata = $this->ci->LehrveranstaltungModel->getLehrveranstaltungGroupNames($studiensemester_kurzbz, $ausbildungssemester, $studiengang_kz, $lehrveranstaltung_ids);
 
-		echo 'NEXTCLOUD LEHRVERANSTALTUNGEN SYNC';
+		if (!hasData($groupdata))
+		{
+			echo $this->nl.'no lv groups found in source system';
+			return;
+		}
+
+		$groups = $groupdata->retval;
+
+		// split into groups when parallel processing
+		$groups = $this->_splitGroups($groups, $splitsize, $part);
+
+		echo $this->nl.'NEXTCLOUD LEHRVERANSTALTUNGEN SYNC PART '.$part.'/'.$splitsize;
 		echo $this->nl.str_repeat('-', 50);
 
 		$results = array(
@@ -63,53 +76,44 @@ class NextcloudSyncLib
 
 		$starttime = new DateTime(date('d.m.Y H:i:s'));
 
-		if (hasData($groupdata))
+		foreach ($groups as $group)
 		{
-			foreach ($groupdata->retval as $group)
+			$lehrveranstaltung_id = $group->lehrveranstaltung_id;
+			$groupname = $group->lvgroupname;
+
+			if (in_array($groupname, $nextcloudgroups))
 			{
-				$lehrveranstaltung_id = $group->lehrveranstaltung_id;
-				$groupname = $group->lvgroupname;
-
 				if ($this->debugmode)
-
-				if (in_array($groupname, $nextcloudgroups))
+					echo $this->nl.'group '.$groupname.' already exists';
+			}
+			else
+			{
+				if ($this->ci->OcsModel->addGroup($groupname))
 				{
 					if ($this->debugmode)
-						echo $this->nl.'group '.$groupname.' already exists';
+						echo $this->nl.'ok, lv group '.$groupname.' created';
+					$results['groupsadded']++;
 				}
 				else
 				{
-					if ($this->ci->OcsModel->addGroup($groupname))
-					{
-						if ($this->debugmode)
-							echo $this->nl.'ok, lv group '.$groupname.' created';
-						$results['groupsadded']++;
-					}
-					else
-					{
-						echo $this->nl.'creation of lv group '.$groupname.' failed';
-						$results['groupsaddfailed']++;
-					}
-				}
-
-				if (isset($syncusers) && $syncusers === true)
-				{
-					$syncedusers = $this->addUsersToLvGroup($studiensemester_kurzbz, $lehrveranstaltung_id);
-					$results['usersadded'] += $syncedusers[0];
-					$results['usersremoved'] += $syncedusers[1];
-					$results['usersaddfailed'] += $syncedusers[2];
-					$results['usersremovefailed'] += $syncedusers[3];
+					echo $this->nl.'creation of lv group '.$groupname.' failed';
+					$results['groupsaddfailed']++;
 				}
 			}
-		}
-		else
-		{
-			echo $this->nl.'no lv groups found in source system';
+
+			if (isset($syncusers) && ($syncusers === true || strtolower($syncusers) === 'true' || $syncusers === '1'))
+			{
+				$syncedusers = $this->addUsersToLvGroup($studiensemester_kurzbz, $lehrveranstaltung_id);
+				$results['usersadded'] += $syncedusers[0];
+				$results['usersremoved'] += $syncedusers[1];
+				$results['usersaddfailed'] += $syncedusers[2];
+				$results['usersremovefailed'] += $syncedusers[3];
+			}
 		}
 
 		$endtime = new DateTime(date('d.m.Y H:i:s'));
 
-		$this->_printSyncFooter('lehrveranstaltungen', $results, $starttime, $endtime);
+		$this->_printSyncFooter('lehrveranstaltungen', $results, $starttime, $endtime, $splitsize, $part);
 	}
 
 	/**
@@ -392,20 +396,59 @@ class NextcloudSyncLib
 	}
 
 	/**
+	 * Gets a part of an array
+	 * @param $groups to split
+	 * @param $splitsize number of chunks to split the array into
+	 * @param $part number of the chunk needed
+	 * @return array subarray of $groups
+	 */
+	private function _splitGroups($groups, $splitsize, $part)
+	{
+		if ($splitsize < 1)
+		{
+			return $groups;
+		}
+
+		if ($part > $splitsize)
+		{
+			echo "cannot get part $part of $splitsize parts";
+			return $groups;
+		}
+
+		$totalsize = count($groups);
+
+		if ($splitsize > $totalsize)
+			$splitsize = $totalsize;
+
+		$groupsize = floor($totalsize / $splitsize);
+
+		if ($splitsize === $part)
+		{
+			$execgroupsize = $totalsize - ($splitsize - 1) * $groupsize;
+		}
+		else
+			$execgroupsize = $groupsize;
+
+		$startidx = $groupsize * ($part - 1);
+
+		return array_slice($groups, $startidx, $execgroupsize);
+	}
+
+	/**
 	 * Prints sync footer
 	 * @param $syncname
-	 * @param $groupsadded
-	 * @param $usersadded
-	 * @param $usersremoved
+	 * @param $results
 	 * @param $starttime
 	 * @param $endtime
+	 * @param int $splitsize
+	 * @param int $part
 	 */
-	private function _printSyncFooter($syncname, $results, $starttime, $endtime)
+	private function _printSyncFooter($syncname, $results, $starttime, $endtime, $splitsize = 1, $part = 1)
 	{
 		$timedifference = date_diff($starttime, $endtime);
 
 		echo $this->nl.str_repeat('-', 50);
-		echo $this->nl.strtoupper($syncname).' SYNC FINISHED.';
+		echo $this->nl.strtoupper($syncname).' SYNC FINISHED (PART '.$part.'/'.$splitsize.')';
 		echo $this->nl.'ALTOGETHER: '.$results['groupsadded'].' groups added, '.$results['groupsaddfailed'].' groups failed to add, '.$results['usersadded'].' users added, ';
 		echo $results['usersremoved'].' users removed, '.$results['usersaddfailed'].' users failed to add, '.$results['usersremovefailed'].' users failed to remove';
 		echo $this->nl.'SYNC TOOK '.($timedifference->days == 0 ? '' : $timedifference->days.' days, ').$timedifference->h.' hours, '.$timedifference->i.' minutes, '.$timedifference->s.' seconds';

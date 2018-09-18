@@ -47,12 +47,12 @@ class NextcloudSyncAll extends FHC_Controller
 	}
 
 	/**
-	 * Runs sync for all lvs (in current/next studiensemester) and oes (active)
+	 * Runs sync for lvs (in current/next studiensemester) and oes (active)
 	 */
-	public function runAll()
+	public function runAll($splitsize=1, $part=1)
 	{
 		// Sync lv groups
-		$this->runLvGroups();
+		$this->runLvGroups(null, $splitsize, $part);
 
 		// Sync oe groups
 		$this->runOeGroups();
@@ -62,12 +62,14 @@ class NextcloudSyncAll extends FHC_Controller
 	 * Initializes sync for all lvs of all Studiengaenge for a given Studiensemester
 	 * @param null $studiensemester_kurzbz if not given, actual or next (in summer) semester is retrieved
 	 * @param bool $syncusers wether to sync students and lecturers of the group
+	 * @param int $splitsize number of chunks to split into when parallel processing
+	 * @param int $part number of the chunk needed after split
 	 */
-	public function runLvGroups($studiensemester_kurzbz = null, $syncusers = true)
+	public function runLvGroups($studiensemester_kurzbz = null, $syncusers = true, $splitsize=1, $part=1)
 	{
 		$studiensemester_kurzbz = $this->_getAktOrNextSemester($studiensemester_kurzbz);
 
-		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers);
+		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers, $splitsize, $part);
 	}
 
 	/**
