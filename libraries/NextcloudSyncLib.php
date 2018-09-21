@@ -404,12 +404,7 @@ class NextcloudSyncLib
 	 */
 	private function _splitGroups($groups, $splitsize, $part)
 	{
-		if ($splitsize < 1)
-		{
-			return $groups;
-		}
-
-		if ($part > $splitsize)
+		if ($splitsize < 1 || $part < 1 || $part > $splitsize)
 		{
 			echo "cannot get part $part of $splitsize parts";
 			return $groups;
