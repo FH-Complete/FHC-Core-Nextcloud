@@ -258,7 +258,7 @@ class Ocs_Model extends FHC_Model
 	 * @param $user
 	 * @return array of Users
 	 */
-	public function searchUser($user, $limit=1)
+	public function searchUser($user, $limit=0)
 	{
 		$ch = curl_init();
 

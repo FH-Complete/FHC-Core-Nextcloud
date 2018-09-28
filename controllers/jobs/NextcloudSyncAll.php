@@ -52,10 +52,10 @@ class NextcloudSyncAll extends FHC_Controller
 	public function runAll($splitsize=1, $part=1)
 	{
 		// Sync lv groups
-		$this->runLvGroups(null, $splitsize, $part);
+		$this->runLvGroups(null, true, $splitsize, $part);
 
 		// Sync oe groups
-		$this->runOeGroups();
+		$this->runOeGroups($splitsize, $part);
 	}
 
 	/**
@@ -75,9 +75,9 @@ class NextcloudSyncAll extends FHC_Controller
 	/**
 	 * Initializes Oe group sync
 	 */
-	public function runOeGroups()
+	public function runOeGroups($syncusers, $splitsize=1, $part=1)
 	{
-		$this->nextcloudsynclib->addOeGroups();
+		$this->nextcloudsynclib->addOeGroups($syncusers, $splitsize, $part);
 	}
 
 	/**

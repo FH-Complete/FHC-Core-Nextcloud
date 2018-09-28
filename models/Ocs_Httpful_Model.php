@@ -93,7 +93,7 @@ class OCS_Httpful_Model extends FHC_Model
 	 * @param $user
 	 * @return array of Users or false on error
 	 */
-	public function searchUser($user, $limit=1)
+	public function searchUser($user, $limit=0)
 	{
 		$response = $this->nextcloudclientlib->call('users?search='.$user, 'GET', array('limit' => $limit));
 
