@@ -7,8 +7,9 @@ if (! defined('BASEPATH')) exit('No direct script access allowed');
  */
 class NextcloudSyncLib
 {
-	private $_debugmode;
-	private $_funktionenForOeSync;
+	private $_debugmode; // if false, only error messages are displayed
+	private $_funktionenForOeSync; // Only users assigned to oes with this functions are synced
+	const OE_PREFIX = 'OE_'; // prefix for oe so they can be distinguished in Nextcl oud
 
 	/**
 	 * Constructor
@@ -209,6 +210,8 @@ class NextcloudSyncLib
 
 			if (isError($benutzer))
 				show_error($benutzer->retval);
+
+			$oe_kurzbz = self::OE_PREFIX.$oe_kurzbz;
 
 			$usersfound = true;
 
