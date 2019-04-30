@@ -19,7 +19,7 @@
  */
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
-class OCS_Httpful_Model extends FHC_Model
+class OCS_Httpful_Model extends CI_Model
 {
 	/**
 	 * Constructor

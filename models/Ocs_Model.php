@@ -19,7 +19,7 @@
  */
 if (! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Ocs_Model extends FHC_Model
+class Ocs_Model extends CI_Model
 {
 	private $_nextcloud_config;
 	private $_base_url;
@@ -560,7 +560,7 @@ class Ocs_Model extends FHC_Model
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 7);
 		curl_setopt($ch, CURLOPT_USERAGENT, "FH-Complete");
-		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE'); 
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 
 		if (!$this->_nextcloud_config['verifyssl'])
