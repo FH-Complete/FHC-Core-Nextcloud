@@ -149,9 +149,8 @@ class NextcloudClientLib
 	 */
 	private function _loadConfig()
 	{
-		$config = $this->ci->config->item('FHC-Core-Nextcloud');
-
-		$this->_configArray = $config;
+		$this->ci->config->load('extensions/FHC-Core-Nextcloud/config');
+		$this->_configArray = $this->ci->config->item('FHC-Core-Nextcloud');
 	}
 
 	/**

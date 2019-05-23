@@ -38,8 +38,6 @@ class Nextcloud extends Auth_Controller
 			)
 		);
 
-		$this->config->load('extensions/FHC-Core-Nextcloud/config');
-
 		$this->load->model('organisation/Studiensemester_model', 'StudiensemesterModel');
 		$this->load->model('organisation/Studiengang_model', 'StudiengangModel');
 

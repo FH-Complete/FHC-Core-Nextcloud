@@ -26,7 +26,6 @@ class OCS_Httpful_Model extends CI_Model
 	 */
 	public function __construct()
 	{
-		$this->NextcloudConfig = $this->config->item('FHC-Core-Nextcloud');
 		$this->load->library('extensions/FHC-Core-Nextcloud/NextcloudClientLib');
 	}
 

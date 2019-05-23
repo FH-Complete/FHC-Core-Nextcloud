@@ -29,7 +29,6 @@ class NextcloudSyncAll extends FHC_Controller
 			exit;
 		}
 
-		$this->config->load('extensions/FHC-Core-Nextcloud/config');
 		$this->load->library('extensions/FHC-Core-Nextcloud/NextcloudSyncLib');
 	}
 
