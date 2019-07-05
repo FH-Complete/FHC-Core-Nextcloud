@@ -18,11 +18,7 @@ class NextcloudSyncAll extends FHC_Controller
 	{
 		parent::__construct();
 
-		if ($this->input->is_cli_request())
-		{
-			$cli = true;
-		}
-		else
+		if (!$this->input->is_cli_request())
 		{
 			$this->output->set_status_header(403, 'Jobs must be run from the CLI');
 			echo "Jobs must be run from the CLI";
@@ -66,9 +62,12 @@ class NextcloudSyncAll extends FHC_Controller
 	 */
 	public function runLvGroups($studiensemester_kurzbz = null, $syncusers = true, $splitsize=1, $part=1)
 	{
-		$studiensemester_kurzbz = $this->_getAktOrNextSemester($studiensemester_kurzbz);
+		$studiensemester_kurzbz_arr = $this->_getAktOrNextSemester($studiensemester_kurzbz);
 
-		$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester_kurzbz, null, null, null, $syncusers, $splitsize, $part);
+		foreach ($studiensemester_kurzbz_arr as $studiensemester)
+		{
+			$this->nextcloudsynclib->addLehrveranstaltungGroups($studiensemester, null, null, null, $syncusers, $splitsize, $part);
+		}
 	}
 
 	/**
@@ -83,17 +82,15 @@ class NextcloudSyncAll extends FHC_Controller
 	 * Initializes deletion for all lvs of all Studiengaenge for a given Studiensemester
 	 * @param null $studiensemester_kurzbz
 	 */
-	public function deleteLvGroups($studiensemester_kurzbz = null)
+	public function deleteLvGroups($studiensemester_kurzbz)
 	{
-		$studiensemester_kurzbz = $this->_getAktOrNextSemester($studiensemester_kurzbz);
-
 		$this->nextcloudsynclib->deleteLehrveranstaltungGroups($studiensemester_kurzbz);
 	}
 
 	/**
-	 * Retrieves current or next (in summer) Studiensemester if not provided
+	 * Retrieves current, in summer current and next Studiensemester.
 	 * @param $studiensemester_kurzbz
-	 * @return the studiensemester_kurzbz
+	 * @return array studiensemester_kurzbz
 	 */
 	private function _getAktOrNextSemester($studiensemester_kurzbz)
 	{
@@ -101,13 +98,21 @@ class NextcloudSyncAll extends FHC_Controller
 
 		if (!isset($studiensemester_kurzbz) || !preg_match("/^[W|S]S\d{4,}$/", $studiensemester_kurzbz))
 		{
-			$currstudiensemesterdata = $this->StudiensemesterModel->getAktOrNextSemester();
+			$aktornextsemdata = $this->StudiensemesterModel->getAktOrNextSemester();
+			$aktsemdata = $this->StudiensemesterModel->getAktOrNextSemester(0);
 
-			if (!hasData($currstudiensemesterdata))
+			if (!hasData($aktornextsemdata) || !hasData($aktsemdata))
 				show_error('no studiensemester retrieved');
 
-			return $currstudiensemesterdata->retval[0]->studiensemester_kurzbz;
+			$aktornextsem = $aktornextsemdata->retval[0]->studiensemester_kurzbz;
+			$aktsem = $aktsemdata->retval[0]->studiensemester_kurzbz;
+
+			$semarr = array($aktornextsem);
+			if ($aktsem !== $aktornextsem)
+				$semarr[] = $aktsem;
+
+			return $semarr;
 		}
-		return $studiensemester_kurzbz;
+		return array($studiensemester_kurzbz);
 	}
 }
