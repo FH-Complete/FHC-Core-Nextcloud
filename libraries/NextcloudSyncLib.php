@@ -46,7 +46,7 @@ class NextcloudSyncLib
 	 */
 	public function addLehrveranstaltungGroups($studiensemester_kurzbz, $ausbildungssemester = null, $studiengang_kz = null, $lehrveranstaltung_ids = null, $syncusers = true, $splitsize = 1, $part = 1)
 	{
-		$nextcloudgroups =  $this->ci->OcsModel->getGroups();
+		$nextcloudgroups = $this->ci->OcsModel->getGroups();
 
 		if (!$nextcloudgroups)
 		{
@@ -148,7 +148,8 @@ class NextcloudSyncLib
 		if (isError($lecturerdata))
 			show_error($lecturerdata->retval);
 
-		$studentdata = $this->ci->LehrveranstaltungModel->getStudentsByLv($studiensemester_kurzbz, $lehrveranstaltung_id);
+		// true - only active users
+		$studentdata = $this->ci->LehrveranstaltungModel->getStudentsByLv($studiensemester_kurzbz, $lehrveranstaltung_id, true);
 
 		if (isError($studentdata))
 			show_error($studentdata->retval);
