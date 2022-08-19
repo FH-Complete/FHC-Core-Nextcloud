@@ -3,11 +3,11 @@
 		'templates/FHC-Header',
 		array(
 			'title' => 'Nextcloud',
-			'jquery' => true,
-			'jqueryui' => true,
-			'bootstrap' => true,
-			'fontawesome' => true,
-			'sbadmintemplate' => true,
+			'jquery3' => true,
+			'jqueryui1' => true,
+			'bootstrap3' => true,
+			'fontawesome4' => true,
+			'sbadmintemplate3' => true,
 			'ajaxlib' => true,
 			'navigationwidget' => true,
 			'customJSs' =>
