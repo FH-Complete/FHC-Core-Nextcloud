@@ -450,7 +450,7 @@ class NextcloudSyncLib
 	 * @param int $splitsize
 	 * @param int $part
 	 */
-	private function _printSyncHeader($syncname, $splitsize = 1, $part = 1, $partsize, $totalsize)
+	private function _printSyncHeader($syncname, $splitsize, $part, $partsize, $totalsize)
 	{
 		echo $this->nl.'NEXTCLOUD '. strtoupper($syncname) .' SYNC PART '.$part.'/'.$splitsize.', SYNCING '.$partsize.'/'.$totalsize.' groups';
 		echo $this->nl.str_repeat('-', 50);
