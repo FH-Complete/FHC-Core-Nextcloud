@@ -65,12 +65,12 @@ class NextcloudSyncLib
 		}
 
 		$groups = $groupdata->retval;
-		$totalsize = count($groups);
+		$totalsize = numberOfElements($groups);
 
 		// split into groups when parallel processing
 		$groups = $this->_splitGroups($groups, $splitsize, $part);
 
-		$partsize = count($groups);
+		$partsize = numberOfElements($groups);
 		$this->_printSyncHeader('lehrveranstaltungen', $splitsize, $part, $partsize, $totalsize);
 
 		$results = array(
@@ -135,7 +135,7 @@ class NextcloudSyncLib
 		if (isError($groupdata))
 			show_error($groupdata->retval);
 
-		if (count($groupdata->retval) == 1)
+		if (numberOfElements($groupdata->retval) == 1)
 			$groupname = $groupdata->retval[0]->lvgroupname;
 		else
 		{
@@ -186,11 +186,11 @@ class NextcloudSyncLib
 		}
 
 		$oes = $oes->retval;
-		$totalsize = count($oes);
+		$totalsize = numberOfElements($oes);
 
 		// split into groups when parallel processing
 		$oes = $this->_splitGroups($oes, $splitsize, $part);
-		$partsize = count($oes);
+		$partsize = numberOfElements($oes);
 
 		$this->_printSyncHeader('Organisationseinheiten', $splitsize, $part, $partsize, $totalsize);
 
@@ -425,7 +425,7 @@ class NextcloudSyncLib
 			return $groups;
 		}
 
-		$totalsize = count($groups);
+		$totalsize = numberOfElements($groups);
 
 		if ($splitsize > $totalsize)
 			$splitsize = $totalsize;

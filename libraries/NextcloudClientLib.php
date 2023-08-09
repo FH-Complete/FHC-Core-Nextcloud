@@ -326,8 +326,8 @@ class NextcloudClientLib
 				{
 					// If no data are present
 					if ((is_string($response->body) && trim($response->body) == '')
-						|| (is_array($response->body) && count($response->body) == 0)
-						|| (is_object($response->body) && count((array)$response->body) == 0))
+						|| (is_array($response->body) && numberOfElements($response->body) == 0)
+						|| (is_object($response->body) && numberOfElements((array)$response->body) == 0))
 					{
 						$this->_hasData = false; // set property _hasData to false
 					}
